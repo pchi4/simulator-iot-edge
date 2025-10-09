@@ -1,0 +1,18 @@
+{
+  "annotations": { "list": [] },
+  "panels": [
+    {
+      "type": "timeseries",
+      "title": "Temperatura dos dispositivos",
+      "targets": [
+        {
+          "query": "from(bucket: \"devices\") |> range(start: -5m)",
+          "refId": "A"
+        }
+      ]
+    }
+  ],
+  "schemaVersion": 37,
+  "title": "Exemplo - Monitoramento IoT",
+  "version": 1
+}

@@ -1,0 +1,94 @@
+
+
+services:
+  # 🧭 Broker MQTT central
+  mosquitto:
+    image: eclipse-mosquitto:2.0
+    container_name: mosquitto
+    ports:
+      - "${MQTT_PORT}:1883"
+    volumes:
+      - ./mosquitto/config:/mosquitto/config
+      - ./mosquitto/data:/mosquitto/data
+    restart: unless-stopped
+
+  # 🧪 Simulador de dispositivos
+  device_sim:
+    build:
+      context: ./device_sim
+    environment:
+      - MQTT_BROKER=${MQTT_BROKER}
+      - MQTT_PORT=${MQTT_PORT}
+    depends_on:
+      - mosquitto
+    restart: on-failure
+
+  # ⚙️ Processador de borda
+  edge_processor:
+    build:
+      context: ./edge_processor
+    environment:
+      - MQTT_BROKER=${MQTT_BROKER}
+      - MQTT_PORT=${MQTT_PORT}
+      - MODEL_PATH=/app/model/model.json
+    depends_on:
+      - mosquitto
+    restart: unless-stopped
+
+  # 📝 Logger de resultados
+  result_logger:
+    build:
+      context: ./result_logger
+    environment:
+      - MQTT_BROKER=${MQTT_BROKER}
+      - MQTT_PORT=${MQTT_PORT}
+    depends_on:
+      - mosquitto
+    restart: unless-stopped
+
+  # 🧭 Banco de dados de séries temporais
+  influxdb:
+    image: influxdb:${INFLUXDB_VERSION}
+    container_name: influxdb
+    ports:
+      - "${INFLUXDB_PORT}:8086"
+    environment:
+      - DOCKER_INFLUXDB_INIT_MODE=setup
+      - DOCKER_INFLUXDB_INIT_USERNAME=${INFLUXDB_USER}
+      - DOCKER_INFLUXDB_INIT_PASSWORD=${INFLUXDB_PASSWORD}
+      - DOCKER_INFLUXDB_INIT_ORG=${INFLUXDB_ORG}
+      - DOCKER_INFLUXDB_INIT_BUCKET=${INFLUXDB_BUCKET}
+      - DOCKER_INFLUXDB_INIT_RETENTION=${INFLUXDB_RETENTION}
+      - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=${INFLUXDB_TOKEN}
+    volumes:
+      - ./influxdb-data:/var/lib/influxdb2
+    restart: unless-stopped
+
+  # 📡 Coletor MQTT → InfluxDB
+  telegraf:
+    image: telegraf:${TELEGRAF_VERSION}
+    container_name: telegraf
+    depends_on:
+      - mosquitto
+      - influxdb
+    volumes:
+      - ./telegraf.conf:/etc/telegraf/telegraf.conf:ro
+    restart: unless-stopped
+
+  # 📊 Painéis e monitoramento
+  grafana:
+    image: grafana/grafana:${GRAFANA_VERSION}
+    container_name: grafana
+    ports:
+      - "${GRAFANA_PORT}:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_USER}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD}
+      - GF_PATHS_PROVISIONING=/etc/grafana/provisioning
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning
+      - ./grafana/dashboards:/var/lib/grafana/dashboards
+      - ./grafana-data:/var/lib/grafana
+    depends_on:
+      - influxdb
+    restart: unless-stopped

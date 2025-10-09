@@ -1,0 +1,37 @@
+# Logs e temporários
+*.log
+*.tmp
+*.pid
+*.swp
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# IDEs e configurações locais
+.vscode/
+.idea/
+*.iml
+
+# Node, caso use algo JS futuramente
+node_modules/
+dist/
+build/
+
+# Docker e volumes persistentes
+docker-data/
+grafana-data/
+influxdb-data/
+mosquitto/data/
+mosquitto/log/
+*.local
+
+# Arquivos de ambiente
+.env
+.dockerignore
+
+# Sistemas de cache e backups
+*.bak
+*.cache
